@@ -10,6 +10,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain.vectorstores.pgvector import PGVector
 
+# Funktion zur Verarbeitung der User-Eingaben
 def process_input(llm_type, input_type, pdf_files, urls, question):
     model_local = ChatOllama(model=llm_type)
     
