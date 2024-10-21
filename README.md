@@ -18,4 +18,5 @@ For the Chatbot to work properly pls follow these steps and Use the Tutorials fo
 + Install and use postgresql-Database in Docker
 + Use PGVector Extension for Postgresql Database
 + Install gradio and langchain
-+ Run the Code
++ Run the Code of the OllamaChatBot.py File
++ In the Prototype Folder are some Prototypes
