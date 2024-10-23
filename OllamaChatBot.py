@@ -1,14 +1,12 @@
 import gradio as gr
 from langchain_community.document_loaders import WebBaseLoader, PyPDFLoader
-from langchain_community.vectorstores import Chroma
-from langchain_community import embeddings
 from langchain_community.chat_models import ChatOllama
+from langchain_community.vectorstores import PGVector
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
-from langchain.vectorstores.pgvector import PGVector
 import csv
 import docx
 
@@ -29,19 +27,24 @@ def load_csv_file(file_path):
 def process_input(llm_type, input_type, files, urls, question):
     model_local = ChatOllama(model=llm_type)
     
-    # Auswahl zwischen Dateien oder URL Verarbeitung
+    # Auswahl zwischen Datei oder URL Verarbeitung
     docs = []
     if input_type == "Dateien":
-        for file in files:
-            if file.name.endswith(".pdf"):
-                loader = PyPDFLoader(file.name)  # Verwende den Dateipfad für PDFs
+        for uploaded_file in files:
+            if uploaded_file.name.endswith(".pdf"):
+                loader = PyPDFLoader(uploaded_file)  # Verwende den Dateipfad
                 docs.extend(loader.load())
-            elif file.name.endswith(".docx"):
-                word_text = load_word_file(file.name)  # Lade und verarbeite Word-Dokument
-                docs.append({"page_content": word_text})
-            elif file.name.endswith(".csv"):
-                csv_text = load_csv_file(file.name)  # Lade und verarbeite CSV-Datei
-                docs.append({"page_content": csv_text})
+            elif uploaded_file.name.endswith(".docx"):
+                doc = docx.Document(uploaded_file)
+                full_text = []
+                for paragraph in doc.paragraphs:
+                    full_text.append(paragraph.text)
+                docs.append("\n".join(full_text))
+            elif uploaded_file.name.endswith(".csv"):
+                with open(uploaded_file, newline='') as csvfile:
+                    reader = csv.reader(csvfile)
+                    csv_text = "\n".join([",".join(row) for row in reader])
+                    docs.append(csv_text)
     elif input_type == "URLs":
         urls_list = urls.split("\n")
         docs = [WebBaseLoader(url).load() for url in urls_list]
@@ -57,6 +60,7 @@ def process_input(llm_type, input_type, files, urls, question):
         collection_name="rag-chroma",
         embedding=OllamaEmbeddings(model='nomic-embed-text:latest'),
         connection_string="postgresql+psycopg2://postgres:password@localhost:5432/vector_db",
+        use_jsonb=True,
     )
     retriever = vectorstore.as_retriever()
 
