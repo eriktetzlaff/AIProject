@@ -9,17 +9,39 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain.vectorstores.pgvector import PGVector
+import csv
+import docx
+
+# Funktion zum Laden von Word-Dokumenten
+def load_word_file(file_path):
+    doc = docx.Document(file_path)
+    text = '\n'.join([para.text for para in doc.paragraphs])
+    return text
+
+# Funktion zum Laden von CSV-Dateien
+def load_csv_file(file_path):
+    with open(file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        csv_data = "\n".join([", ".join(row) for row in reader])
+    return csv_data
 
 # Funktion zur Verarbeitung der User-Eingaben
-def process_input(llm_type, input_type, pdf_files, urls, question):
+def process_input(llm_type, input_type, files, urls, question):
     model_local = ChatOllama(model=llm_type)
     
-    # Auswahl zwischen PDF oder URL Verarbeitung
+    # Auswahl zwischen Dateien oder URL Verarbeitung
     docs = []
-    if input_type == "PDFs":
-        for pdf_file in pdf_files:
-            loader = PyPDFLoader(pdf_file)  # Verwende direkt den Dateipfad
-            docs.extend(loader.load())
+    if input_type == "Dateien":
+        for file in files:
+            if file.name.endswith(".pdf"):
+                loader = PyPDFLoader(file.name)  # Verwende den Dateipfad für PDFs
+                docs.extend(loader.load())
+            elif file.name.endswith(".docx"):
+                word_text = load_word_file(file.name)  # Lade und verarbeite Word-Dokument
+                docs.append({"page_content": word_text})
+            elif file.name.endswith(".csv"):
+                csv_text = load_csv_file(file.name)  # Lade und verarbeite CSV-Datei
+                docs.append({"page_content": csv_text})
     elif input_type == "URLs":
         urls_list = urls.split("\n")
         docs = [WebBaseLoader(url).load() for url in urls_list]
@@ -54,7 +76,7 @@ def process_input(llm_type, input_type, pdf_files, urls, question):
 
 # Gradio Interface Definition
 def update_inputs(input_type):
-    if input_type == "PDFs":
+    if input_type == "Dateien":
         return gr.update(visible=True), gr.update(visible=False)
     elif input_type == "URLs":
         return gr.update(visible=False), gr.update(visible=True)
@@ -62,17 +84,18 @@ def update_inputs(input_type):
 
 # Setup der Gradio UI
 with gr.Blocks() as iface:
-    llm_type = gr.Radio(choices=['llama3.1:8b','mistral:latest','JarvisAI:latest'], label="Wählen Sie eine LLM")
-    input_type = gr.Radio(choices=["PDFs", "URLs"], label="Wählen Sie den Eingabetyp")
+    llm_type = gr.Radio(choices=['llama3.1:8b', 'mistral:latest', 'JarvisAI:latest'], label="Wählen Sie eine LLM")
+    input_type = gr.Radio(choices=["Dateien", "URLs"], label="Wählen Sie den Eingabetyp")
 
-    pdf_files = gr.Files(label="Laden Sie Ihre PDF-Dateien hoch", file_types=[".pdf"], visible=False)
+    # Erweiterung der Dateiauswahl für PDF, DOCX und CSV
+    files = gr.Files(label="Laden Sie Ihre Dateien hoch (PDF, DOCX, CSV)", file_types=[".pdf", ".docx", ".csv"], visible=False)
     url_input = gr.Textbox(label="Geben Sie URLs getrennt durch Zeilen ein", visible=False)
     
     question = gr.Textbox(label="Stellen Sie Ihre Frage")
     output = gr.Textbox(label="Antwort")
 
     # Dynamische Sichtbarkeitsaktualisierung
-    input_type.change(fn=update_inputs, inputs=input_type, outputs=[pdf_files, url_input])
+    input_type.change(fn=update_inputs, inputs=input_type, outputs=[files, url_input])
 
     # Button zur Verarbeitung der Anfrage
     submit_button = gr.Button("Frage stellen")
@@ -80,7 +103,7 @@ with gr.Blocks() as iface:
     # Eventhandling des Submit Button
     submit_button.click(
         fn=process_input, 
-        inputs=[llm_type, input_type, pdf_files, url_input, question], 
+        inputs=[llm_type, input_type, files, url_input, question], 
         outputs=[output]
     )
 
@@ -89,18 +112,18 @@ with gr.Blocks() as iface:
         components=[
             llm_type,
             input_type,
-            pdf_files,
+            files,
             url_input,
             question,
             output
         ],
         value="Chat leeren"
-        )
+    )
     
-    #Eventhandling des ClearButton 
+    # Eventhandling des ClearButton 
     clear_button.click(
         fn=lambda: (gr.update(visible=False), gr.update(visible=True)),  # Wir geben zwei Updates zurück
-        outputs=[pdf_files, url_input]  # Das sind die Ausgaben für pdf_files und url_input
+        outputs=[files, url_input]  # Das sind die Ausgaben für files und url_input
     )
 
 iface.launch()
