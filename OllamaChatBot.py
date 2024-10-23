@@ -35,16 +35,9 @@ def process_input(llm_type, input_type, files, urls, question):
                 loader = PyPDFLoader(uploaded_file)  # Verwende den Dateipfad
                 docs.extend(loader.load())
             elif uploaded_file.name.endswith(".docx"):
-                doc = docx.Document(uploaded_file)
-                full_text = []
-                for paragraph in doc.paragraphs:
-                    full_text.append(paragraph.text)
-                docs.append("\n".join(full_text))
+                docs.append("\n".join(load_word_file(uploaded_file)))
             elif uploaded_file.name.endswith(".csv"):
-                with open(uploaded_file, newline='') as csvfile:
-                    reader = csv.reader(csvfile)
-                    csv_text = "\n".join([",".join(row) for row in reader])
-                    docs.append(csv_text)
+                docs.append(load_csv_file(uploaded_file))
     elif input_type == "URLs":
         urls_list = urls.split("\n")
         docs = [WebBaseLoader(url).load() for url in urls_list]
@@ -92,7 +85,7 @@ with gr.Blocks() as iface:
     input_type = gr.Radio(choices=["Dateien", "URLs"], label="Wählen Sie den Eingabetyp")
 
     # Erweiterung der Dateiauswahl für PDF, DOCX und CSV
-    files = gr.Files(label="Laden Sie Ihre Dateien hoch (PDF, DOCX, CSV)", file_types=[".pdf", ".docx", ".csv"], visible=False)
+    files = gr.Files(label="Laden Sie Ihre Dateien hoch (PDF, DOCX, CSV)", file_types=['.pdf', '.docx', '.csv'], visible=False)
     url_input = gr.Textbox(label="Geben Sie URLs getrennt durch Zeilen ein", visible=False)
     
     question = gr.Textbox(label="Stellen Sie Ihre Frage")
