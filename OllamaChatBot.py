@@ -8,19 +8,13 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 import csv
-import pypandoc
-# import docx
+import docx
 
 # Funktion zum Laden von Word-Dokumenten
-"""def load_word_file(file_path):
+def load_word_file(file_path):
     doc = docx.Document(file_path)
     text = '\n'.join([para.text for para in doc.paragraphs])
     return text
-"""
-# Funktion zum Laden von Word-Dokumenten mit pypandoc
-def load_word_file(file_path):
-    output = pypandoc.convert_file(file_path, 'plain')  # Konvertiere zu einfachem Text
-    return output
 
 # Funktion zum Laden von CSV-Dateien
 def load_csv_file(file_path):
